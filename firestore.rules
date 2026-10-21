@@ -1,0 +1,34 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{db}/documents {
+
+    // Chỉ tài khoản Google đã xác thực email VÀ có tên trong collection "allowed" mới được truy cập
+    function isAllowed() {
+      return request.auth != null
+        && request.auth.token.email_verified == true
+        && exists(/databases/$(db)/documents/allowed/$(request.auth.token.email));
+    }
+
+    // Mỗi dòng kế hoạch được thực hiện = 1 document
+    match /records/{id} {
+      allow read: if isAllowed();
+      allow create, update: if isAllowed()
+        && request.resource.data.keys().hasOnly(
+             ['ngay','lab','loai','ten','nguoi','tt','kq','gc','by','at'])
+        && request.resource.data.get('tt', 'Chưa thực hiện')
+             in ['Chưa thực hiện', 'Đã thực hiện', 'Bỏ qua']
+        && request.resource.data.get('kq', '') in ['', 'Đạt', 'Không đạt']
+        && request.resource.data.get('nguoi', '').size() <= 200
+        && request.resource.data.get('gc', '').size() <= 1000
+        && request.resource.data.by == request.auth.token.email;
+      allow delete: if false;
+    }
+
+    // Người dùng chỉ đọc được mục của chính mình (để app kiểm tra đã được cấp quyền chưa)
+    // Thêm/xoá người dùng thực hiện trong Firebase Console
+    match /allowed/{email} {
+      allow read: if request.auth != null && request.auth.token.email == email;
+      allow write: if false;
+    }
+  }
+}
