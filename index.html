@@ -451,10 +451,6 @@ if(firebaseConfig.apiKey.startsWith('DAN_')){
     $('who').textContent=user?user.email:'';
     if(!user){showGate('Đăng nhập bằng tài khoản Google đã được cấp quyền để xem và cập nhật kế hoạch.',{signIn:true});return}
     showGate('Đang kiểm tra quyền truy cập…');
-    try{
-      const ok=(await getDoc(doc(db,'allowed',user.email.toLowerCase()))).exists();
-      if(!ok){showGate('Tài khoản '+user.email+' chưa được cấp quyền. Liên hệ quản trị để được thêm vào danh sách.',{signOutBtn:true});return}
-    }catch(e){showGate('Không kiểm tra được quyền ('+(e.code||e.message)+'). Kiểm tra mạng rồi thử lại.',{signOutBtn:true});return}
     CLOUD.ready=true;
     showGate('Đang tải dữ liệu…');
     unsub=onSnapshot(col,snap=>{
@@ -467,7 +463,7 @@ if(firebaseConfig.apiKey.startsWith('DAN_')){
       const first=gate.hidden===false;
       if(first)lock(false);
       if(first||remote)softRender();
-    },e=>showGate('Không đọc được dữ liệu ('+(e.code||e.message)+').',{signOutBtn:true}));
+    },e=>{CLOUD.ready=false;showGate(e.code==='permission-denied'?'Tài khoản '+user.email+' chưa được cấp quyền. Liên hệ quản trị để được thêm vào danh sách.':'Không đọc được dữ liệu ('+(e.code||e.message)+').',{signOutBtn:true})});
   });
 
   bIn.onclick=async()=>{
